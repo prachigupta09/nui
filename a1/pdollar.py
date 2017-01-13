@@ -11,7 +11,7 @@ import pdb
 def main(argv):
 	p = argparse.ArgumentParser()
 	p.add_argument("-t", 
-		help="add a gesture file to the training set",
+		help="add a gesture template to the recognizer",
 		metavar="<gesturefile>")
 	p.add_argument("-r", 
 		help="resets the recognition engine", 
@@ -27,7 +27,7 @@ def main(argv):
 		reset()
 	elif(args.t != None):
 		# Add the gesture file to the training set
-		train(args.t)
+		add(args.t)
 	elif(args.estream != None):
 		# Read gestures from the event stream file
 		read(args.estream)
@@ -39,13 +39,13 @@ def main(argv):
 def reset():
 	print("resetting engine...")
 	
-
-def train(gesturefile):
-	print("training on gesture file:", gesturefile)
 	
-
+def add(gesturefile):
+	print("adding new gesture template:", gesturefile)
+	
+	
 def read(eventstream):
-	print("reading events from file:", eventstream)
+	print("streaming events from file:", eventstream)
 	
 
 
