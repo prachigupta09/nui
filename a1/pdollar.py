@@ -11,13 +11,13 @@ import pdb
 def main(argv):
 	p = argparse.ArgumentParser()
 	p.add_argument("-t", 
-		help="add a gesture template to the recognizer",
+		help="adds the gesture file to the list of gesture templates",
 		metavar="<gesturefile>")
 	p.add_argument("-r", 
-		help="resets the recognition engine", 
+		help="clears the templates", 
 		action="store_true")
 	p.add_argument("estream", 
-		help="Prints the name of gestures as they are recognized from the event stream",
+		help="prints the name of gestures as they are recognized from the event stream",
 		metavar="<eventstream>",
 		nargs="?") # makes this argument appear optional
 	
@@ -37,16 +37,92 @@ def main(argv):
 
 
 def reset():
-	print("resetting engine...")
-	
+	open("templates.dat", 'w').close()
+	print("Templates list cleared!")
 	
 def add(gesturefile):
-	print("adding new gesture template:", gesturefile)
+	gf = open(gesturefile, 'r')
+	tf = open("templates.dat", 'a')
+	for line in gf:
+		tf.write(line)
+	gf.close(), tf.close()
+	print("Templates added from file: ", gesturefile)
 	
 	
 def read(eventstream):
-	print("streaming events from file:", eventstream)
+	# --- Gesture file format ---
+	# GestureName
+	# BEGIN
+	# x,y
+	# ...
+	# x,y
+	# END
+	# --- Event stream format ---
+	# MOUSEDOWN
+	# x,y
+	# ...
+	# x,y
+	# MOUSEUP
+	# RECOGNIZE
 	
+	# Train the recognizer on the list of templates.
+	tf = open("templates.dat", 'r')
+	state = 0
+	gname = ""
+	gpoints = []
+	templates = []
+	for line in tf:
+		if line == "\n":
+			continue
+		if state == 0:
+			# The line is the gesture name.
+			gname = line.strip()
+			state = 1
+		elif state == 1:
+			# The line is "BEGIN", skip it.
+			state = 2
+		elif state == 2:
+			# The line is either an (x,y), or "END".
+			if line.strip() == "END":
+				# Add the gesture template.
+				t = Template(gname, gpoints)
+				#print("Recognizer trained on gesture: ", gname)
+				templates.append(t)
+				gname = ""
+				gpoints.clear()
+				state = 0
+			else:
+				points = line.strip().split(',')
+				x, y = int(points[0]), int(points[1])
+				gpoints.append(Point(x,y))
+	recog = Recognizer(templates)
+		
+	# Extract the necessary points from the event stream.
+	es = open(eventstream, 'r')
+	state = 0
+	events = []
+	gpoints = []
+	for line in es:
+		if state == 0:
+			# Line is "MOUSEDOWN", skip it.
+			state = 1
+		elif state == 1:
+			if line.strip() == "MOUSEUP":
+				events.append(gpoints)
+				gpoints = []
+				state = 2
+			else:
+				points = line.strip().split(',')
+				x,y = int(points[0]), int(points[1])
+				gpoints.append(Point(x,y))
+		elif state == 2:
+			if line.strip() == "MOUSEDOWN":
+				state == 1
+			
+				
+	for event in events:
+		gname, acc = recog.recognize(event)
+		print(gname)
 
 
 
