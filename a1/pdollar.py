@@ -55,6 +55,8 @@ def read(eventstream):
 	# BEGIN
 	# x,y
 	# ...
+	# BEGIN
+	# ...
 	# x,y
 	# END
 	# --- Event stream format ---
@@ -63,6 +65,9 @@ def read(eventstream):
 	# ...
 	# x,y
 	# MOUSEUP
+	# MOUSEDOWN
+	# x,y ...
+	# MOUSDOWN
 	# RECOGNIZE
 	
 	# Train the recognizer on the list of templates.
@@ -71,6 +76,7 @@ def read(eventstream):
 	gname = ""
 	gpoints = []
 	templates = []
+	touch_num = 0
 	for line in tf:
 		if line == "\n":
 			continue
@@ -90,18 +96,20 @@ def read(eventstream):
 				templates.append(t)
 				gname = ""
 				gpoints.clear()
+				touch_num += 1
 				state = 0
 			else:
 				points = line.strip().split(',')
 				x, y = int(points[0]), int(points[1])
-				gpoints.append(Point(x,y))
+				gpoints.append(Point(x, y, touch_num))
 	recog = Recognizer(templates)
-		
+	pdb.set_trace()	
 	# Extract the necessary points from the event stream.
 	es = open(eventstream, 'r')
 	state = 0
 	events = []
 	gpoints = []
+	touch_num = 0
 	for line in es:
 		if state == 0:
 			# Line is "MOUSEDOWN", skip it.
@@ -111,10 +119,11 @@ def read(eventstream):
 				events.append(gpoints)
 				gpoints = []
 				state = 2
+				touch_num += 1
 			else:
 				points = line.strip().split(',')
 				x,y = int(points[0]), int(points[1])
-				gpoints.append(Point(x,y))
+				gpoints.append(Point(x, y, touch_num))
 		elif state == 2:
 			if line.strip() == "MOUSEDOWN":
 				state == 1
