@@ -10,13 +10,13 @@ import pdb
 
 def main(argv):
 	p = argparse.ArgumentParser()
-	p.add_argument("-t", 
+	p.add_argument("-t",
 		help="adds the gesture file to the list of gesture templates",
 		metavar="<gesturefile>")
-	p.add_argument("-r", 
-		help="clears the templates", 
+	p.add_argument("-r",
+		help="clears the templates",
 		action="store_true")
-	p.add_argument("estream", 
+	p.add_argument("estream",
 		help="prints the name of gestures as they are recognized from the event stream",
 		metavar="<eventstream>",
 		nargs="?") # makes this argument appear optional
@@ -69,7 +69,11 @@ def read(eventstream):
 	# x,y ...
 	# MOUSDOWN
 	# RECOGNIZE
-	
+	# MOUSEDOWN
+	# ...
+	# MOUSEUP
+	# RECOGNIZE
+	'''
 	# Train the recognizer on the list of templates.
 	tf = open("templates.dat", 'r')
 	state = 0
@@ -103,46 +107,31 @@ def read(eventstream):
 				x, y = int(points[0]), int(points[1])
 				gpoints.append(Point(x, y, touch_num))
 	recog = Recognizer(templates)
-	pdb.set_trace()	
+	pdb.set_trace()
 	# Extract the necessary points from the event stream.
-	es = open(eventstream, 'r')
-	state = 0
-	events = []
-	gpoints = []
+	'''
+	gestures = []   # list of lists of points
+	gesture = []    # list of points
 	touch_num = 0
-	for line in es:
-		if state == 0:
-			# Line is "MOUSEDOWN", skip it.
-			state = 1
-		elif state == 1:
-			if line.strip() == "MOUSEUP":
-				events.append(gpoints)
-				gpoints = []
-				state = 2
-				touch_num += 1
-			else:
-				points = line.strip().split(',')
-				x,y = int(points[0]), int(points[1])
-				gpoints.append(Point(x, y, touch_num))
-		elif state == 2:
-			if line.strip() == "MOUSEDOWN":
-				state == 1
-			
-				
-	for event in events:
-		gname, acc = recog.recognize(event)
-		print(gname)
-
-
-
-
-
-
-
-
-
-
-
+	es = open(eventstream, 'r')
+	for raw_line in es:
+	    line = raw_line.strip()
+	    if line == "MOUSEDOWN":
+	        touch_num += 1
+	    elif line == "MOUSEUP":
+	        continue
+	    elif line == "RECOGNIZE":
+	        # It's assumed recognize clears after recognition.
+	        gestures.append(gesture)
+	        gesture = []
+	        touch_num = 0
+	    else:
+	        x,y = int(line.split(',')[0]), int(line.split(',')[1])
+	        gesture.append(Point(x, y, touch_num))
+	es.close()
+	for gesture in gestures:
+	    gname, accuracy = recog.recognize(gesture)
+	    print gname
 
 
 
