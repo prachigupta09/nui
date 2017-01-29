@@ -1,12 +1,11 @@
-#~/usr/bin/python3
+#~/usr/bin/python
 import sys
 import argparse
+import os
 # Using sonovice's implementation of the pdollar recognition engine.
 # https://github.com/sonovice/dollarpy
 # Included in this project as "dollarpy.py"
 from dollarpy import Recognizer, Template, Point
-
-import pdb
 
 def main(argv):
 	p = argparse.ArgumentParser()
@@ -37,79 +36,47 @@ def main(argv):
 
 
 def reset():
+	# Clears out the file "templates.dat"
 	open("templates.dat", 'w').close()
 	print("Templates list cleared!")
 	
 def add(gesturefile):
-	gf = open(gesturefile, 'r')
+	# Adds the gesturefile's full path to the reference file of templates.
+	fullpath = os.path.abspath(gesturefile)
 	tf = open("templates.dat", 'a')
-	for line in gf:
-		tf.write(line)
-	gf.close(), tf.close()
-	print("Templates added from file: ", gesturefile)
+	tf.write(fullpath + "\n")
+	tf.close()
+	print("Template from " + gesturefile + " added!")
 	
 	
 def read(eventstream):
-	# --- Gesture file format ---
-	# GestureName
-	# BEGIN
-	# x,y
-	# ...
-	# BEGIN
-	# ...
-	# x,y
-	# END
-	# --- Event stream format ---
-	# MOUSEDOWN
-	# x,y
-	# ...
-	# x,y
-	# MOUSEUP
-	# MOUSEDOWN
-	# x,y ...
-	# MOUSDOWN
-	# RECOGNIZE
-	# MOUSEDOWN
-	# ...
-	# MOUSEUP
-	# RECOGNIZE
-	'''
-	# Train the recognizer on the list of templates.
+	# Train the recognizer on the list of template files,
+	# then execute the recognizer on the eventstream file.
+	# -------------------------------------------------------------------------
 	tf = open("templates.dat", 'r')
-	state = 0
-	gname = ""
-	gpoints = []
 	templates = []
-	touch_num = 0
-	for line in tf:
-		if line == "\n":
-			continue
-		if state == 0:
-			# The line is the gesture name.
-			gname = line.strip()
-			state = 1
-		elif state == 1:
-			# The line is "BEGIN", skip it.
-			state = 2
-		elif state == 2:
-			# The line is either an (x,y), or "END".
-			if line.strip() == "END":
-				# Add the gesture template.
-				t = Template(gname, gpoints)
-				#print("Recognizer trained on gesture: ", gname)
-				templates.append(t)
-				gname = ""
-				gpoints.clear()
+	for raw_lines in tf:
+		line = raw_lines.strip()
+		touch_num = 0
+		gf = open(line, 'r')
+		gname = gf.readline().strip()
+		gpoints = []
+		for lines in gf:
+			gfline = lines.strip()
+			if gfline == "BEGIN":
 				touch_num += 1
-				state = 0
+			elif gfline == "END":
+				continue
 			else:
-				points = line.strip().split(',')
-				x, y = int(points[0]), int(points[1])
+				x,y = int(gfline.split(',')[0]), int(gfline.split(',')[1])
 				gpoints.append(Point(x, y, touch_num))
+		t = Template(gname, gpoints)
+		templates.append(t)
+		gname = ""
+		gpoints = []
 	recog = Recognizer(templates)
-	pdb.set_trace()
+	# -------------------------------------------------------------------------
 	# Extract the necessary points from the event stream.
-	'''
 	gestures = []   # list of lists of points
 	gesture = []    # list of points
 	touch_num = 0
@@ -131,18 +98,10 @@ def read(eventstream):
 	es.close()
 	for gesture in gestures:
 	    gname, accuracy = recog.recognize(gesture)
-	    print gname
-
-
-
-
-
-
-
+	    print(gname)
 
 
 
 # Entry point of the application
 if __name__=="__main__":
 	main(sys.argv)
-
