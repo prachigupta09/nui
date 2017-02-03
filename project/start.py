@@ -2,7 +2,7 @@
 #------------------------------------------------------------------------------
 # Objectives:
 # 1. Make a webserver that hosts a game of chess.
-#	 This requires being able to show the user the board. 
+#	 This requires being able to show the user the board.
 # 2. Make a speech recognition client that can interpret commands to AN moves
 # 3. Enhance the client to make calls to the webserver running chess.
 #------------------------------------------------------------------------------
@@ -14,54 +14,46 @@ import asyncio
 import chess
 import chess.svg
 #------------------------------------------------------------------------------
-customcss = '''.square.light {
-  fill: #f2f2f2;
-}
-
-.square.dark {
-  fill: #8c8c8c;
-}
-
-.square.light.lastmove {
-  fill: #ced26b;
-}
-
-.square.dark.lastmove {
-  fill: #aaa23b;
-}
-
-.check {
-  fill: url(#check_gradient);
-}'''
-
+boardcss = '''
+.square.light {             fill: #f2f2f2;                      }
+.square.dark {              fill: #8c8c8c;                      }
+.square.light.lastmove {    fill: #ced26b;                      }
+.square.dark.lastmove {     fill: #aaa23b;                      }
+.check {                    fill: url(#check_gradient);         }
+'''
 
 def main():
 	start("localhost", 7777)
 
 def start(host_addr, port_num):
 	app = web.Application()
-	chessgame = Game()
-    #service = Service(args.css.read() if args.css else None)
-    #app.router.add_get("/board.png", service.render_png)
-    #app.router.add_get("/board.svg", service.render_svg)
-	app.router.add_get("/", chessgame.get_board)
-	app.router.add_post("/move", chessgame.post_move)	
+	chessgame = GameController()
+	app.router.add_get("/", chessgame.get_root)
+	app.router.add_get("/board.svg", chessgame.get_board)
+	app.router.add_post("/move", chessgame.post_move)
 	web.run_app(app, port=port_num, host=host_addr)
 
 # Todo: Decouple the GameManager from the Game.
-class Game:
+class GameController:
 	
-	# Initialize the game. 
+	# Initialize the game.
 	def __init__(self):
 		self.board = chess.Board()
-		#self.css = chess.svg.DEFAULT_STYLE
-		self.css = customcss
+		self.css = boardcss
+	
+	
+	# Default route. Redirect to the board.
+	@asyncio.coroutine
+	def get_root(self, request):
+	    return web.Response()
+	    # What to do?
+	
 	
 	# Responds to a GET request for the board.
 	# Todo: Allow for parameters to alter the board.svg file?
 	@asyncio.coroutine
 	def get_board(self, request):
-		return web.Response(text=self.render_board(request), 
+		return web.Response(text=self.render_board(request),
 			content_type="image/svg+xml")
 	
 	
@@ -72,7 +64,7 @@ class Game:
 		#print(data)
 		# Apply the move. If it is successful, redirect to getting the board.
 		rv = self.make_move(data)
-		return web.Response(status=rv, text=self.render_board(request), 
+		return web.Response(status=rv, text=self.render_board(request),
 			content_type="image/svg+xml")
 	
 	
@@ -83,8 +75,7 @@ class Game:
 		
 	# Applies a post request move to the board. Returns status code if move invalid.
 	def make_move(self, post_data):
-		# If the post_data looks weird, it's because it's url encoded. 	
-
+		# If the post_data looks weird, it's because it's url encoded.
 		# First, validate the paramters we need to make a move.
 		try:
 			piece = post_data["piece"]
@@ -93,7 +84,7 @@ class Game:
 		try:
 			from_square = post_data["from"]
 		except (KeyError, ValueError):
-			from_square = ""	
+			from_square = ""
 		try:
 			to_square = post_data["to"]
 		except (KeyError, ValueError):
@@ -105,14 +96,18 @@ class Game:
 			move = self.board.parse_san(move_str)
 		except (ValueError):
 			# Invalid move specified.
-			raise web.HTTPBadRequest(reason="Move: " + move_str + " is invalid!")
+			prompt = "Move: " + move_str + " is invalid!\nValid moves are: " + str([str(move) for move in self.board.legal_moves])
+			raise web.HTTPBadRequest(reason=prompt)
 			
-		if move in self.board.legal_moves:
-			# Apply the legal move.
-			self.board.push(move)
-			return 202
-		else:
-			raise web.HTTPBadRequest(reason="Move: " + move_str + " is illegal.")
+			
+        if move in self.board.legal_moves:
+            self.board.push(move)
+            return 202
+        else:
+            #prompt = "Move: " + move_str + " is illegal!\nLegal moves are: " + str([str(move) for move in self.board.legal_moves])
+            #prompt=""
+            raise web.HTTPBadRequest(reason="")
+            
 			
 			
 	
