@@ -14,9 +14,29 @@ import asyncio
 import chess
 import chess.svg
 #------------------------------------------------------------------------------
+customcss = '''.square.light {
+  fill: #f2f2f2;
+}
+
+.square.dark {
+  fill: #8c8c8c;
+}
+
+.square.light.lastmove {
+  fill: #ced26b;
+}
+
+.square.dark.lastmove {
+  fill: #aaa23b;
+}
+
+.check {
+  fill: url(#check_gradient);
+}'''
+
 
 def main():
-	start("127.0.0.1", 7777)
+	start("localhost", 7777)
 
 def start(host_addr, port_num):
 	app = web.Application()
@@ -25,8 +45,7 @@ def start(host_addr, port_num):
     #app.router.add_get("/board.png", service.render_png)
     #app.router.add_get("/board.svg", service.render_svg)
 	app.router.add_get("/", chessgame.get_board)
-	app.router.add_post("/", chessgame.post_move)
-	
+	app.router.add_post("/move", chessgame.post_move)	
 	web.run_app(app, port=port_num, host=host_addr)
 
 # Todo: Decouple the GameManager from the Game.
@@ -35,8 +54,8 @@ class Game:
 	# Initialize the game. 
 	def __init__(self):
 		self.board = chess.Board()
-		self.css = chess.svg.DEFAULT_STYLE
-	
+		#self.css = chess.svg.DEFAULT_STYLE
+		self.css = customcss
 	
 	# Responds to a GET request for the board.
 	# Todo: Allow for parameters to alter the board.svg file?
