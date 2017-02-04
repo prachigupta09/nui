@@ -15,7 +15,7 @@ import chess
 import chess.svg
 #------------------------------------------------------------------------------
 boardcss = '''
-.square.light {             fill: #f2f2f2;                      }
+.square.light {             fill: #e6e6e6;                      }
 .square.dark {              fill: #8c8c8c;                      }
 .square.light.lastmove {    fill: #ced26b;                      }
 .square.dark.lastmove {     fill: #aaa23b;                      }
@@ -33,7 +33,7 @@ def start(host_addr, port_num):
 	app.router.add_post("/move", chessgame.post_move)
 	web.run_app(app, port=port_num, host=host_addr)
 
-# Todo: Decouple the GameManager from the Game.
+
 class GameController:
 	
 	# Initialize the game.
@@ -45,32 +45,34 @@ class GameController:
 	# Default route. Redirect to the board.
 	@asyncio.coroutine
 	def get_root(self, request):
-	    return web.Response()
-	    # What to do?
+		self.board = chess.Board()
+		return web.HTTPFound("/board.svg#newgame")
 	
 	
 	# Responds to a GET request for the board.
 	# Todo: Allow for parameters to alter the board.svg file?
 	@asyncio.coroutine
 	def get_board(self, request):
-		return web.Response(text=self.render_board(request),
+		return web.Response(text=self.render_board(),
 			content_type="image/svg+xml")
 	
 	
-	# Responds to a POST request for a move.
+	# Responds to a POST request for making a move.
 	@asyncio.coroutine
 	def post_move(self, request):
 		data = yield from request.post()
-		#print(data)
 		# Apply the move. If it is successful, redirect to getting the board.
 		rv = self.make_move(data)
-		return web.Response(status=rv, text=self.render_board(request),
-			content_type="image/svg+xml")
-	
+		return web.HTTPFound("/board.svg")
+			
 	
 	# Returns the active board, in svg format.
-	def render_board(self, request):
-		return chess.svg.board(board=self.board, style=self.css)
+	def render_board(self, hint=False):
+		next_moves = chess.SquareSet()
+		if hint:
+			for move in self.board.legal_moves:
+				next_moves.add(move.to_square)
+		return chess.svg.board(board=self.board, squares=next_moves, style=self.css)
 		
 		
 	# Applies a post request move to the board. Returns status code if move invalid.
@@ -78,35 +80,38 @@ class GameController:
 		# If the post_data looks weird, it's because it's url encoded.
 		# First, validate the paramters we need to make a move.
 		try:
-			piece = post_data["piece"]
+			piece = post_data["piece"].upper()
 		except (KeyError, ValueError):
-			piece = ""
+			raise web.HTTPBadRequest(reason="Parameter [piece] not specified!")
+		
 		try:
-			from_square = post_data["from"]
-		except (KeyError, ValueError):
-			from_square = ""
-		try:
-			to_square = post_data["to"]
+			to_square = post_data["to"].lower()
 		except (KeyError, ValueError):
 			raise web.HTTPBadRequest(reason="Parameter [to] not specified!")
 		
-		# Attempt to make the move.
-		move_str = piece + from_square + to_square
+		# The parameter from is either a piece or a position.
+		move_str = piece + to_square
+		my_legal_moves = [str(self.board.piece_at(move.from_square)).upper()
+			+ chess.SQUARE_NAMES[move.to_square] 
+			for move in self.board.legal_moves]
+		
+		# Check if the move is a valid formatted move.
 		try:
-			move = self.board.parse_san(move_str)
+			if move_str[0] == "P":
+				move = self.board.parse_san(move_str[1:])
+			else:
+				move = self.board.parse_san(move_str)
 		except (ValueError):
 			# Invalid move specified.
-			prompt = "Move: " + move_str + " is invalid!\nValid moves are: " + str([str(move) for move in self.board.legal_moves])
+			prompt = "Move: " + move_str + " is invalid!\nValid moves are: " + str(my_legal_moves)
 			raise web.HTTPBadRequest(reason=prompt)
-			
-			
-        if move in self.board.legal_moves:
-            self.board.push(move)
-            return 202
-        else:
-            #prompt = "Move: " + move_str + " is illegal!\nLegal moves are: " + str([str(move) for move in self.board.legal_moves])
-            #prompt=""
-            raise web.HTTPBadRequest(reason="")
+		# Check if the move is legal.
+		if move in self.board.legal_moves and move_str in my_legal_moves:
+			self.board.push(move)
+			return 202
+		else:
+			prompt = "Move: " + move_str + " is illegal!\nLegal moves are: " + str(my_legal_moves)
+			raise web.HTTPBadRequest(reason=prompt)
             
 			
 			

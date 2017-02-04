@@ -1,4 +1,4 @@
 Benjamin Hammack
 bhammack
-python pdollar.py 		(written for Python 2.7)
-Linux
+python pdollar.py
+Linux (Script written for python 2.7)
