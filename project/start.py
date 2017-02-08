@@ -31,6 +31,7 @@ def start(host_addr, port_num):
 	app.router.add_get("/", chessgame.get_root)
 	app.router.add_get("/board.svg", chessgame.get_board)
 	app.router.add_post("/move", chessgame.post_move)
+	app.router.add_post("/undo", chessgame.post_undo)
 	web.run_app(app, port=port_num, host=host_addr)
 
 
@@ -41,7 +42,8 @@ class GameController:
 		self.board = chess.Board()
 		self.css = boardcss
 	
-	
+#----[Routes for the web application]------------------------------------------
+
 	# Default route. Redirect to the board.
 	@asyncio.coroutine
 	def get_root(self, request):
@@ -53,9 +55,8 @@ class GameController:
 	# Todo: Allow for parameters to alter the board.svg file?
 	@asyncio.coroutine
 	def get_board(self, request):
-		return web.Response(text=self.render_board(),
+		return web.Response(text=self.render_board(True),
 			content_type="image/svg+xml")
-	
 	
 	# Responds to a POST request for making a move.
 	@asyncio.coroutine
@@ -64,7 +65,13 @@ class GameController:
 		# Apply the move. If it is successful, redirect to getting the board.
 		rv = self.make_move(data)
 		return web.HTTPFound("/board.svg")
-			
+		
+	@asyncio.coroutine
+	def post_undo(self, request):
+	    self.undo_move()
+	    return web.HTTPFound("/board.svg")
+
+#----[Game functions, called by routes]----------------------------------------
 	
 	# Returns the active board, in svg format.
 	def render_board(self, hint=False):
@@ -92,7 +99,7 @@ class GameController:
 		# The parameter from is either a piece or a position.
 		move_str = piece + to_square
 		my_legal_moves = [str(self.board.piece_at(move.from_square)).upper()
-			+ chess.SQUARE_NAMES[move.to_square] 
+			+ chess.SQUARE_NAMES[move.to_square]
 			for move in self.board.legal_moves]
 		
 		# Check if the move is a valid formatted move.
@@ -113,7 +120,10 @@ class GameController:
 			prompt = "Move: " + move_str + " is illegal!\nLegal moves are: " + str(my_legal_moves)
 			raise web.HTTPBadRequest(reason=prompt)
             
-			
+
+	def undo_move(self):
+	    if len(self.board.move_stack) > 0:
+	        self.board.pop()
 			
 	
 if __name__ == "__main__":
