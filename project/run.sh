@@ -1,1 +1,1 @@
-python3.4 start.py
+python3.4 server.py
