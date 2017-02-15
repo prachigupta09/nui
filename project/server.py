@@ -21,9 +21,12 @@ boardcss = '''
 .square.dark.lastmove {     fill: #aaa23b;                      }
 .check {                    fill: url(#check_gradient);         }
 '''
+HOSTNAME = "thunder.cise.ufl.edu"
+PORT = 7777
+
 
 def main():
-	start("localhost", 7777)
+	start(HOSTNAME, PORT)
 
 def start(host_addr, port_num):
 	app = web.Application()
