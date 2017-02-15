@@ -13,6 +13,7 @@ from aiohttp import web
 import asyncio
 import chess
 import chess.svg
+import subprocess
 #------------------------------------------------------------------------------
 boardcss = '''
 .square.light {             fill: #e6e6e6;                      }
@@ -51,7 +52,7 @@ class GameController:
 	@asyncio.coroutine
 	def get_root(self, request):
 		self.board = chess.Board()
-		return web.HTTPFound("/board.svg#newgame")
+		return web.HTTPFound("/board.png#newgame")
 	
 	
 	# Responds to a GET request for the board.
@@ -59,7 +60,7 @@ class GameController:
 	@asyncio.coroutine
 	def get_board(self, request):
 		return web.Response(text=self.render_board(True),
-			content_type="image/svg+xml")
+			content_type="image/board.png")
 	
 	# Responds to a POST request for making a move.
 	@asyncio.coroutine
@@ -67,22 +68,33 @@ class GameController:
 		data = yield from request.post()
 		# Apply the move. If it is successful, redirect to getting the board.
 		rv = self.make_move(data)
-		return web.HTTPFound("/board.svg")
+		return web.HTTPFound("/board.png")
 		
 	@asyncio.coroutine
 	def post_undo(self, request):
 	    self.undo_move()
-	    return web.HTTPFound("/board.svg")
+	    return web.HTTPFound("/board.png")
 
 #----[Game functions, called by routes]----------------------------------------
 	
 	# Returns the active board, in svg format.
+	# Now returns the board in PNG format!
 	def render_board(self, hint=False):
 		next_moves = chess.SquareSet()
 		if hint:
 			for move in self.board.legal_moves:
 				next_moves.add(move.to_square)
-		return chess.svg.board(board=self.board, squares=next_moves, style=self.css)
+		# Conversion code:
+		raw_svg = chess.svg.board(board=self.board, squares=next_moves, style=self.css)
+		f = open("board.svg", "w")
+		f.write(raw_svg)
+		f.close()
+		subprocess.call(['inkscape', '-z', '-f board.svg', '-w 400', '-j', '-e board.png'])
+		#pass
+		f = open("board.png", "rb")
+		raw_png = f.read()
+		f.close()
+		return raw_png
 		
 		
 	# Applies a post request move to the board. Returns status code if move invalid.
