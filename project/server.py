@@ -45,7 +45,7 @@ def svg2png(raw_svg, width=400):
 	with open(ifile, "w") as f:
 		f.write(raw_svg)
 	subprocess.call(['inkscape', '-z', '-f', ifile, '-w', str(width), '-j', '-e', ofile])
-	with open("board.png", "rb") as f:
+	with open(ofile, "rb") as f:
 		raw_png = f.read()
 	return raw_png
 
