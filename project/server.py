@@ -33,10 +33,21 @@ def start(host_addr, port_num):
 	app = web.Application()
 	chessgame = GameController()
 	app.router.add_get("/", chessgame.get_root)
-	app.router.add_get("/board.svg", chessgame.get_board)
+	app.router.add_get("/board.png", chessgame.get_board)
 	app.router.add_post("/move", chessgame.post_move)
 	app.router.add_post("/undo", chessgame.post_undo)
 	web.run_app(app, port=port_num, host=host_addr)
+	
+def svg2png(raw_svg, width=400):
+	# Converts raw_svg data (in xml format) to png bytes.
+	ifile = "board.svg"
+	ofile = "board.png"
+	with open(ifile, "w") as f:
+		f.write(raw_svg)
+	subprocess.call(['inkscape', '-z', '-f', ifile, '-w', str(width), '-j', '-e', ofile])
+	with open("board.png", "rb") as f:
+		raw_png = f.read()
+	return raw_png
 
 
 class GameController:
@@ -59,8 +70,8 @@ class GameController:
 	# Todo: Allow for parameters to alter the board.svg file?
 	@asyncio.coroutine
 	def get_board(self, request):
-		return web.Response(text=self.render_board(True),
-			content_type="image/board.png")
+		#return web.Response(text=self.render_board(True), content_type="image/svg+xml")
+		return web.Response(body=self.render_board(True), content_type="image/png")
 	
 	# Responds to a POST request for making a move.
 	@asyncio.coroutine
@@ -86,15 +97,7 @@ class GameController:
 				next_moves.add(move.to_square)
 		# Conversion code:
 		raw_svg = chess.svg.board(board=self.board, squares=next_moves, style=self.css)
-		f = open("board.svg", "w")
-		f.write(raw_svg)
-		f.close()
-		subprocess.call(['inkscape', '-z', '-f board.svg', '-w 400', '-j', '-e board.png'])
-		#pass
-		f = open("board.png", "rb")
-		raw_png = f.read()
-		f.close()
-		return raw_png
+		return svg2png(raw_svg)
 		
 		
 	# Applies a post request move to the board. Returns status code if move invalid.
